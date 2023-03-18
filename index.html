@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>CREATE WORLD MAP WITH D3</title>
+
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+
+  <style>
+
+    html, body {
+      min-height: 100%;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    svg {
+      background-color: azure;
+    }
+    #canvas {
+      min-width: 1000px;
+      min-height: 600px;
+    }
+
+  </style>
+</head>
+<body>
+<h1 id="title">US Education Level By County</h1>
+<div id="description"></div>
+  
+  <svg id="canvas"></svg>
+
+  <script>
+    /****************** TUTORIAL: https://www.youtube.com/watch?v=ha1toFtBfF8&t=92s continue at 22:40 ****************/
+
+    let countyURL = "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json";
+    let educationURL = "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json";
+    
+    let countyData
+    let educationData
+    
+    let canvas = d3.select('#canvas');
+
+    let drawMap = () => {
+      canvas.selectAll('path') //associate each path on the canvas with one of the geoJson objects in countyData
+      .data(countyData)
+      .enter()    // enter() specifies what to do when there is a a geoJson object without a path, which is all of them in this case. 
+      .append('path') // we will append a new path for each
+      .attr('d', d3.geoPath()) // an SVG-path has an attribute 'd' which we need to set. D is a set of coordinates needed to draw the path on the canvas. d3.geoPath() converts the coordinates in the geoJson object into a string that can be given to the SVG-attribute, so SVG can draw the path.
+      .attr('class', 'county')
+      .attr('fill', (countyDataItem) => { // color-fills one of the countyData-array items, which are geoJson array objects
+
+      })
+    }
+
+/********* use d3.json-method to convert the 2 datasets into a javascript object ***********/
+    d3.json(countyURL).then( // d3 json-method returns a promise then-method specifies a function
+      (data, error) => { // data takes the response-text, d3 converts json string into a js object and it'll take an error if needed
+        if(error) {
+          console.log(log);
+        } else {
+          countyData = topojson.feature(data, data.objects.counties).features; // set countyData to the javascript-object stored in data which will be converted to a geoJson with the method topojson.feature(). The second argument tells the method which object to convert. 
+          console.log(countyData);
+          d3.json(educationURL).then( // we are putting the educationData into this else-statement to make sure it's loaded after the countyURL promise is fulfilled
+            (data, error) => {
+              if(error) {
+                console.log(error);
+              } else {
+                educationData = data;
+                console.log(educationData)
+                drawMap();  // drawMap() function runs once all the data is imported
+              }
+            }
+          ) 
+        }
+      }  
+    )
+
+  /************ 
+   * create a path for each of the county objects so it can draw them into a map:
+   
+  the countyData object contains among other things:
+  - a type: 'Topology' - property. This means its still in the topoJson-format.
+  - arcs (arrays within arrays in the end containing coordinate-pairs to draw lines)
+  - 3 objects: counties, staates and nation. We need counties. 
+  - counties-object contains: 
+    > geometries-array[
+      > objetcs with 3 properties:
+        > type: "Polygon" 
+        > id: < some integer >
+        > arcs: [ < reference-numbers to the first arcs-array > ] 
+          > we will use those reference-numbers to draw the lines needed for creating the shapes]
+  We convert this from topoJson- format into geoJson using the d3 topoJson.feature - method (see in function above). We are interested in the features-array within the geoJson-object.
+
+  Note: both the educationDate as well as the countyData array contain a number with the key "id", and "fips", respectfully. This number can function to match the arrays objects. 
+           **********/  
+  </script>
+</body>
+<script defer src="script.js"></script>
+<script defer src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+
+</html>
