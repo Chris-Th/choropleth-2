@@ -28,14 +28,39 @@
       min-width: 1000px;
       min-height: 600px;
     }
+    #tooltip {
+      visibility: hidden; /* default visibility */
+      height: auto;
+      width: auto;
+    }
 
   </style>
 </head>
 <body>
 <h1 id="title">US Education Level By County</h1>
 <div id="description"></div>
+<div id="tooltip"></div>
   
-  <svg id="canvas"></svg>
+  <svg id="legend"> <!-- this is where we draw the color-legend -->
+    <g>
+      <rect x="10" y="0" width="40" height="40" fill="tomato"></rect>
+      <text x="60" y="20" fill="black">less than 15%</text>
+    </g>
+    <g>
+      <rect x="10" y="40" width="40" height="40" fill="orange"></rect>
+      <text x="60" y="60" fill="black">15% to 30%</text>
+    </g>
+    <g>
+      <rect x="10" y="80" width="40" height="40" fill="lightgreen"></rect>
+      <text x="60" y="100" fill="black">30% to 45%</text>
+    </g>
+    <g>
+      <rect x="10" y="120" width="40" height="40" fill="limegreen"></rect>
+      <text x="60" y="140" fill="black">45% or higher</text>
+    </g>
+  </svg> 
+
+  <svg id="canvas"> <!-- this is where we draw the actual choropleth --> </svg>
 
   <script>
     /****************** TUTORIAL: https://www.youtube.com/watch?v=ha1toFtBfF8&t=92s continue at 22:40 ****************/
@@ -43,30 +68,75 @@
     let countyURL = "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json";
     let educationURL = "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json";
     
-    let countyData
-    let educationData
-    
+    let countyData;
+    let educationData;
+     
     let canvas = d3.select('#canvas');
+    let tooltip = d3.select('#tooltip');
 
+    /************ drawMap() draws the map using the values stored in countyData and fills the counties with different colors based on the 'bachelorsOrHigher' - value in the educationData ****************/
     let drawMap = () => {
-      canvas.selectAll('path') //associate each path on the canvas with one of the geoJson objects in countyData
-      .data(countyData)
-      .enter()    // enter() specifies what to do when there is a a geoJson object without a path, which is all of them in this case. 
-      .append('path') // we will append a new path for each
-      .attr('d', d3.geoPath()) // an SVG-path has an attribute 'd' which we need to set. D is a set of coordinates needed to draw the path on the canvas. d3.geoPath() converts the coordinates in the geoJson object into a string that can be given to the SVG-attribute, so SVG can draw the path.
-      .attr('class', 'county')
-      .attr('fill', (countyDataItem) => { // color-fills one of the countyData-array items, which are geoJson array objects
 
-      })
-    }
+      canvas.selectAll('path') // prepare to... 
+        .data(countyData) // ... associate each path on the canvas with one of the geoJson objects in countyData.
+        .enter()    // enter() specifies what to do when there is a a geoJson object without a path, which is all of them in this case. Therefore we will... 
+        .append('path') // ...append a new path for each geoJson object.
+        .attr('d', d3.geoPath()) // an SVG-path has an attribute 'd' which we need to set. D is a set of coordinates needed to draw the path on the canvas. The d3.geoPath() - method converts the coordinates in the geoJson object into a string that can be given to the SVG-attribute, so SVG can draw the path.
+        .attr('class', 'county')
+        .attr('fill', (countyDataItem) => { // color-fills one of the countyData-array items, which are geoJson array objects
+          let id = countyDataItem['id']; // select the geoJson() id in countyDataItem and store it in the variable id.
+          let county = educationData.find((item) => { // now we need to find the corresponding county in the education data, using the array.find() method. We give find a function that returns a boolean expr. THis will return the first item where the boolean expr. is true.
+            return item['fips'] === id; // make sure the 'fips' code of the educationData - item equals the id of the countyDataItem so the county-variable is set to the correct county object. 
+          }) 
+          // Now we need to locate the desired data which is stored in the field bachelorsOrHigher in each of the county-items we selected and stored in the county-variable
+          let percentage = county['bachelorsOrHigher']; // we store the bachelorsOrHigher -field-value of the county-object in a variable "percentage"
+          if(percentage <= 15) {
+            return 'tomato'; 
+          } // We are returning different colors based on the value of percentage (which we derived from the bachelorsOrHigher -field) which will fill-in the value of the attribute 'fill'. 
+          else if (percentage <= 30) {
+            return 'orange';
+          } else if (percentage <= 45) {
+            return 'lightgreen';
+          } else {
+            return 'limegreen';
+          }
+        })
+        .attr('data-fips', (countyDataItem) => {
+          return countyDataItem['id']; // we are using the .attr() method to attach a 'data-fips' attribute to each item in the countyData - array by taking in countyDataItem and returning its Id.
+        })  
+        .attr('data-education', (countyDataItem) => {
+          let id = countyDataItem['id']; // we set the variable 'id' to the geoJson-object called countyDataItem and take the value of its id-property. 
+          let county = educationData.find((item) => { // we call the .find()- method and give it a function with a boolean expression
+            return item['fips'] === id; // in the educationData-array we return the first object where its 'fips' - value matches the id of countyDataItem
+          })
+          let percentage = county['bachelorsOrHigher']; // we set percentage to equal the bachelorsOrHigher - field
+          return percentage;
+        })
+        .on('mouseover', (countyDataItem) => { // we set an event listener that takes in one of the items in the array countyData (an array og geoJson() - objects)
+            tooltip.transition()
+              .style('visibility', 'visible')  // we call the transition() - method to change the style of the tooltip {visibility: visible}
 
-/********* use d3.json-method to convert the 2 datasets into a javascript object ***********/
-    d3.json(countyURL).then( // d3 json-method returns a promise then-method specifies a function
+            let id = countyDataItem['id']; // select the geoJson() id in countyDataItem and store it in the variable id.
+            let county = educationData.find((item) => { // now we need to find the corresponding county in the education data, using the array.find() method. We give find a function that returns a boolean expr. THis will return the first item where the boolean expr. is true.
+            return item['fips'] === id; // make sure the 'fips' code of the educationData - item equals the id of the countyDataItem so the county-variable is set to the correct county object. 
+          }) 
+
+          tooltip.text(county['fips'] + ' - ' + county['area_name'] + ', ' + county['state'] + ' : ' + county['bachelorsOrHigher'] + '%') // we take the values we stored in the county variable and attach them to the tooltip via the text() - method.
+        }) 
+        .on('mouseout', (countyDataItem) => { // we set another event-listener to make the tooltip disappear when it's not over any county
+            tooltip.transition()
+              .style('visibility', 'hidden') 
+        }) 
+      }
+
+/********* use d3.json-method to convert the 2 datasets into the javascript objects countyData and educationData ***********/
+    d3.json(countyURL).then( // d3 json-method returns a promise, the then-method specifies a function
       (data, error) => { // data takes the response-text, d3 converts json string into a js object and it'll take an error if needed
         if(error) {
           console.log(log);
         } else {
-          countyData = topojson.feature(data, data.objects.counties).features; // set countyData to the javascript-object stored in data which will be converted to a geoJson with the method topojson.feature(). The second argument tells the method which object to convert. 
+          countyData = topojson.feature(data, data.objects.counties).features; // set countyData to the javascript-object stored in data which will be converted from a topoJson to a geoJson - object with the method topojson.feature(). The second argument tells the method which object to convert. 
+          console.log('countyData: ');
           console.log(countyData);
           d3.json(educationURL).then( // we are putting the educationData into this else-statement to make sure it's loaded after the countyURL promise is fulfilled
             (data, error) => {
@@ -74,6 +144,7 @@
                 console.log(error);
               } else {
                 educationData = data;
+                console.log('educationData: ');
                 console.log(educationData)
                 drawMap();  // drawMap() function runs once all the data is imported
               }
@@ -84,19 +155,19 @@
     )
 
   /************ 
-   * create a path for each of the county objects so it can draw them into a map:
+   create a path for each of the county objects so it can draw them into a map:
    
   the countyData object contains among other things:
   - a type: 'Topology' - property. This means its still in the topoJson-format.
-  - arcs (arrays within arrays in the end containing coordinate-pairs to draw lines)
-  - 3 objects: counties, staates and nation. We need counties. 
-  - counties-object contains: 
-    > geometries-array[
-      > objetcs with 3 properties:
-        > type: "Polygon" 
-        > id: < some integer >
-        > arcs: [ < reference-numbers to the first arcs-array > ] 
-          > we will use those reference-numbers to draw the lines needed for creating the shapes]
+  - arcs (array containing arrays within arrays within...) in the end containing coordinate-pairs to draw lines
+  - 3 objects: counties, states and nation. We need counties. 
+    - counties-object contains: 
+      > geometries-array[
+        > objetcs with 3 properties:
+          > type: "Polygon" 
+          > id: < some integer >
+          > arcs: [ < reference-numbers to the arcs-array > ] 
+            > we will use those reference-numbers to draw the lines needed for creating the shapes]
   We convert this from topoJson- format into geoJson using the d3 topoJson.feature - method (see in function above). We are interested in the features-array within the geoJson-object.
 
   Note: both the educationDate as well as the countyData array contain a number with the key "id", and "fips", respectfully. This number can function to match the arrays objects. 
