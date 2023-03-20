@@ -1,5 +1,8 @@
 # choropleth-2
 
+Note: challenge passed as far as the 11 freecodecamp test-requirements are concerned. For reference: https://www.freecodecamp.org/learn/data-visualization/data-visualization-projects/visualize-data-with-a-choropleth-map
+
+No significant styling or layout has been applied yet. This will follow!
 
 resource:
 https://medium.com/@amy.degenaro/introduction-to-digital-cartography-geojson-and-d3-js-c27f066aa84
