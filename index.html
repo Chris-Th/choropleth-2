@@ -6,10 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>CREATE WORLD MAP WITH D3</title>
-
-  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <!-- import d3: -->
+  <script src="https://d3js.org/d3.v5.min.js"></script> 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-
+  <!-- this is where we get the data to draw the counties: https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json. When navigating to this location, we see a JSON-string-object. Its very first property is called "type" and has the value "Topology". This indicates we're dealing with a kind of data called topoJson, which is a specific JSON-format used to store geographic or geometric data. 
+  
+  So: we search for "topoJson cloudflare" and we should be able to find a link that allows us to import it by adding a script-tag in <head></head> with the src-attribute set to this topojson library or whatever its called. (as done above)
+  -->
   <style>
 
     html, body {
@@ -33,39 +36,56 @@
       height: auto;
       width: auto;
     }
+    #legend {
+      display: flex;
+      flex-direction: row;
+      align-items: self-start;
+    }
+    #legend g {
+      display: inline;
+    }
+    .flex-container {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+    }
 
   </style>
 </head>
 <body>
 <h1 id="title">US Education Level By County</h1>
 <div id="description"></div>
-<div id="tooltip"></div>
+<div class="flex-container">
+
   
-  <svg id="legend"> <!-- this is where we draw the color-legend -->
-    <g>
-      <rect x="10" y="0" width="40" height="40" fill="tomato"></rect>
-      <text x="60" y="20" fill="black">less than 15%</text>
-    </g>
-    <g>
-      <rect x="10" y="40" width="40" height="40" fill="orange"></rect>
-      <text x="60" y="60" fill="black">15% to 30%</text>
-    </g>
-    <g>
-      <rect x="10" y="80" width="40" height="40" fill="lightgreen"></rect>
-      <text x="60" y="100" fill="black">30% to 45%</text>
-    </g>
-    <g>
-      <rect x="10" y="120" width="40" height="40" fill="limegreen"></rect>
-      <text x="60" y="140" fill="black">45% or higher</text>
-    </g>
-  </svg> 
+    <svg id="legend"> <!-- this is where we draw the color-legend -->
+      <g>
+        <rect x="10" y="0" width="40" height="40" fill="tomato"></rect>
+        <text x="60" y="20" fill="black">less than 15%</text>
+      </g>
+      <g>
+        <rect x="10" y="40" width="40" height="40" fill="orange"></rect>
+        <text x="60" y="60" fill="black">15% to 30%</text>
+      </g>
+      <g>
+        <rect x="10" y="80" width="40" height="40" fill="lightgreen"></rect>
+        <text x="60" y="100" fill="black">30% to 45%</text>
+      </g>
+      <g>
+        <rect x="10" y="120" width="40" height="40" fill="limegreen"></rect>
+        <text x="60" y="140" fill="black">45% or higher</text>
+      </g>
+    </svg> 
+    <div id="tooltip"></div>
+</div>
 
   <svg id="canvas"> <!-- this is where we draw the actual choropleth --> </svg>
 
   <script>
     /****************** TUTORIAL: https://www.youtube.com/watch?v=ha1toFtBfF8&t=92s continue at 22:40 ****************/
 
-    let countyURL = "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json";
+
+    let countyURL = "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json"; 
     let educationURL = "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json";
     
     let countyData;
@@ -122,6 +142,9 @@
           }) 
 
           tooltip.text(county['fips'] + ' - ' + county['area_name'] + ', ' + county['state'] + ' : ' + county['bachelorsOrHigher'] + '%') // we take the values we stored in the county variable and attach them to the tooltip via the text() - method.
+          tooltip.attr('data-education', () => {
+            return county.bachelorsOrHigher; // we already have the coubty-object from the education-data so we only need to attach the bachelorsOrHigher field. 
+          })
         }) 
         .on('mouseout', (countyDataItem) => { // we set another event-listener to make the tooltip disappear when it's not over any county
             tooltip.transition()
@@ -155,11 +178,11 @@
     )
 
   /************ 
-   create a path for each of the county objects so it can draw them into a map:
+   create a svg path for each of the county objects so they can be drawn into a map:
    
   the countyData object contains among other things:
   - a type: 'Topology' - property. This means its still in the topoJson-format.
-  - arcs (array containing arrays within arrays within...) in the end containing coordinate-pairs to draw lines
+  - arcs (array containing arrays within arrays within...) in the end containing coordinate-pairs (longitude/latitude) to draw the lines
   - 3 objects: counties, states and nation. We need counties. 
     - counties-object contains: 
       > geometries-array[
